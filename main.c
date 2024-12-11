@@ -106,6 +106,11 @@ int main(int argc, char **argv)
 						break;
 					}
 				}
+				// check if the last pixel is not the same color
+				u8 *pixel_h = data + ((y + 7) * header->width + x + 7) * bits;
+				__m128i pixel_h_data = _mm_loadu_si128((__m128i *)pixel_h);
+				if (_mm_movemask_epi8(_mm_cmpeq_epi32(pixel_h_data, color_vector)) != 0)
+					error = 1;
 				if (!error)
 				{
 					start = pixel;
@@ -139,22 +144,26 @@ int main(int argc, char **argv)
 	start -= (header->width * 2 - 2) * (bits);
 
 	u32 i = 0;
-	char message[511];
-	u32 counter = 0;
+	char message[511] = {0};
+	u8 *current_start = start;
+
 	while (i < len)
 	{
-		message[i] = start[counter];
-		start[counter] = 0;
-		counter++;
-		if (counter >= 6 * (bits))
+		// Fetch bytes in blocks of 'bits * 6' (if bits = 1, use 6 bytes at once)
+		for (u32 j = 0; j < 6 * bits && i < len; ++j)
 		{
-			counter = 0;
-			start -= (header->width) * (bits);
+			char byte = current_start[j];
+			if (byte != 0)
+			{
+				message[i++] = byte;
+			}
+			current_start[j] = 0; // Clear the value after reading
 		}
-		if (message[i] != 0)
-			i++;
+
+		// Update position after processing 6 * bits
+		current_start -= (header->width) * bits;
 	}
-	message[len] = 0;
+
 	// write(output_fd, file_content.data, header->data_offset);
 	// write(output_fd, data, header->width * header->height * (bits));
 	write(STDOUT_FILENO, message, len);
