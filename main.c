@@ -61,30 +61,6 @@ struct file_content read_entire_file(char *filename)
 	return (struct file_content){file_data, file_size};
 }
 
-void find_by_color(
-	u8 *data,
-	u32 width,
-	u32 height,
-	u32 color,
-	u8 **output,
-	struct bmp_header *header)
-{
-	for (u32 y = 0; y < height; y++)
-	{
-		for (u32 x = 0; x < width; x++)
-		{
-			u8 *pixel = data + (y * width + x) * (header->bit_per_pixel / 8);
-			if (*(u32 *)pixel == color)
-			{
-				printf("Found color at %p\n", pixel);
-				printf("Pos %u %u\n", x, y);
-				*output = pixel;
-				return;
-			}
-		}
-	}
-}
-
 int main(int argc, char **argv)
 {
 	if (argc != 2)
@@ -99,8 +75,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	struct bmp_header *header = (struct bmp_header *)file_content.data;
-	// printf("signature: %.2s\nfile_size: %u\ndata_offset: %u\ninfo_header_size: %u\nwidth: %u\nheight: %u\nplanes: %i\nbit_per_px: %i\ncompression_type: %u\ncompression_size: %u\n", header->signature, header->file_size, header->data_offset, header->info_header_size, header->width, header->height, header->number_of_planes, header->bit_per_pixel, header->compression_type, header->compressed_image_size);
 
+	u32 bits = header->bit_per_pixel / 8;
 	u8 *data = (u8 *)(file_content.data + header->data_offset);
 
 	u8 *start = NULL;
@@ -109,8 +85,8 @@ int main(int argc, char **argv)
 	{
 		for (u32 x = 0; x < header->width; x++)
 		{
-			u8 *pixel = data + (y * header->width + x) * (header->bit_per_pixel / 8);
-			if (pixel[0] == color[0] && pixel[1] == color[1] && pixel[2] == color[2])
+			u8 *pixel = data + (y * header->width + x) * (bits);
+			if (*(u32 *)pixel == *(u32 *)color)
 			{
 				start = pixel;
 				break;
@@ -124,9 +100,9 @@ int main(int argc, char **argv)
 	// printf("Found header at %p\n", start);
 	// printf("Header: %02x %02x %02x\n", start[0], start[1], start[2]);
 
-	start += (header->width * 7) * (header->bit_per_pixel / 8);
+	start += (header->width * 7) * (bits);
 
-	u8 *len_pixel = start + (header->bit_per_pixel / 8) * 7;
+	u8 *len_pixel = start + (bits) * 7;
 	// printf("Len pixel: %02x %02x %02x\n", len_pixel[0], len_pixel[1], len_pixel[2]);
 
 	u32 len = len_pixel[0] + len_pixel[2];
@@ -139,7 +115,7 @@ int main(int argc, char **argv)
 	// 	return 1;
 	// }
 
-	start -= (header->width * 2 - 2) * (header->bit_per_pixel / 8);
+	start -= (header->width * 2 - 2) * (bits);
 
 	u32 i = 0;
 	char message[511] = {0};
@@ -149,17 +125,17 @@ int main(int argc, char **argv)
 		message[i] = start[counter];
 		start[counter] = 0;
 		counter++;
-		if (counter >= 6 * (header->bit_per_pixel / 8))
+		if (counter >= 6 * (bits))
 		{
 			counter = 0;
-			start -= (header->width) * (header->bit_per_pixel / 8);
+			start -= (header->width) * (bits);
 		}
 		if (message[i] != 0)
 			i++;
 	}
 
 	// write(output_fd, file_content.data, header->data_offset);
-	// write(output_fd, data, header->width * header->height * (header->bit_per_pixel / 8));
-	printf("%s\n", message);
+	// write(output_fd, data, header->width * header->height * (bits));
+	write(STDOUT_FILENO, message, len);
 	return 0;
 }
