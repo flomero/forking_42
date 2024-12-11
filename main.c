@@ -17,6 +17,7 @@ typedef unsigned u32;
 typedef unsigned long u64;
 
 #define PRINT_ERROR(cstring) write(STDERR_FILENO, cstring, sizeof(cstring) - 1)
+#define HEADER_COLOR {127, 188, 217}
 
 #pragma pack(1)
 struct bmp_header
@@ -79,37 +80,33 @@ int main(int argc, char **argv)
 	u8 *data = (u8 *)(file_content.data + header->data_offset);
 
 	u8 *start = NULL;
+	u8 color[3] = HEADER_COLOR;
 	int error = 0;
-	__m128i color_vector = _mm_set1_epi32(0x00D9BC7F);
 	for (u32 y = 0; y < header->height - 7; y++)
 	{
-		for (u32 x = 0; x < header->width - 7; x += 4)
+		for (u32 x = 0; x < header->width - 7; x++)
 		{
-			u8 *pixel = data + (y * header->width + x) * bits;
-			__m128i pixel_data = _mm_loadu_si128((__m128i *)pixel);
-			__m128i comparison = _mm_cmpeq_epi32(pixel_data, color_vector);
-			if (_mm_movemask_epi8(comparison))
+			u8 *pixel = data + (y * header->width + x) * (bits);
+			if (*(u32 *)pixel == *(u32 *)color)
 			{
 				error = 0;
 				for (int j = 1; j < 7; j++)
 				{
-					u8 *pixel_h = data + ((y + 7) * header->width + x + j) * bits;
-					u8 *pixel_v = data + ((y + j) * header->width + x) * bits;
-
-					__m128i pixel_h_data = _mm_loadu_si128((__m128i *)pixel_h);
-					__m128i pixel_v_data = _mm_loadu_si128((__m128i *)pixel_v);
-
-					if (_mm_movemask_epi8(_mm_cmpeq_epi32(pixel_h_data, color_vector)) == 0 ||
-						_mm_movemask_epi8(_mm_cmpeq_epi32(pixel_v_data, color_vector)) == 0)
+					u8 *pixel_h = data + ((y + 7) * header->width + x + j) * (bits);
+					u8 *pixel_v = data + ((y + j) * header->width + x) * (bits);
+					if (*(u32 *)pixel_h != *(u32 *)color || *(u32 *)pixel_v != *(u32 *)color)
+					{
+						error = 1;
+						break;
+					}
+					// check upper left corner is different
+					u8 *pixel_ul = data + ((y + j) * header->width + x + j) * (bits);
+					if (*(u32 *)pixel_ul == *(u32 *)color)
 					{
 						error = 1;
 						break;
 					}
 				}
-				u8 *pixel_h = data + ((y + 7) * header->width + x + 7) * bits;
-				__m128i pixel_h_data = _mm_loadu_si128((__m128i *)pixel_h);
-				if (_mm_movemask_epi8(_mm_cmpeq_epi32(pixel_h_data, color_vector)) != 0)
-					error = 1;
 				if (!error)
 				{
 					start = pixel;
@@ -121,7 +118,7 @@ int main(int argc, char **argv)
 			break;
 	}
 	if (start == NULL)
-		return (printf("Failed to find header\n"), 1);
+		return (PRINT_ERROR("Failed to find header\n"), 1);
 	// printf("Found header at %p\n", start);
 	// printf("Header: %02x %02x %02x\n", start[0], start[1], start[2]);
 
