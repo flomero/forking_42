@@ -88,8 +88,29 @@ int main(int argc, char **argv)
 			u8 *pixel = data + (y * header->width + x) * (bits);
 			if (*(u32 *)pixel == *(u32 *)color)
 			{
-				start = pixel;
-				break;
+				// check l pattern
+				int error = 0;
+				for (int j = 1; j < 7; j++)
+				{
+					u8 *pixel = data + ((y + 7) * header->width + x + j) * (bits);
+					if (*(u32 *)pixel != *(u32 *)color)
+					{
+						error = 1;
+						break;
+					}
+				}
+				for (int j = 1; j < 8; j++)
+				{
+					u8 *pixel = data + ((y + j) * header->width + x) * (bits);
+					if (*(u32 *)pixel != *(u32 *)color)
+					{
+						error = 1;
+						break;
+					}
+				}
+				if (error)
+					continue;
+				start = data + (y * header->width + x) * (bits);
 			}
 		}
 		if (start != NULL)
@@ -118,7 +139,7 @@ int main(int argc, char **argv)
 	start -= (header->width * 2 - 2) * (bits);
 
 	u32 i = 0;
-	char message[511] = {0};
+	char message[511];
 	u32 counter = 0;
 	while (i < len)
 	{
@@ -133,10 +154,9 @@ int main(int argc, char **argv)
 		if (message[i] != 0)
 			i++;
 	}
-
+	message[len] = 0;
 	// write(output_fd, file_content.data, header->data_offset);
 	// write(output_fd, data, header->width * header->height * (bits));
 	write(STDOUT_FILENO, message, len);
-	write(STDOUT_FILENO, "\n", 1);
 	return 0;
 }
