@@ -81,43 +81,37 @@ int main(int argc, char **argv)
 
 	u8 *start = NULL;
 	u8 color[3] = HEADER_COLOR;
-	for (u32 y = 0; y < header->height; y++)
+	int error = 0;
+	for (u32 y = 0; y < header->height - 7; y++)
 	{
-		for (u32 x = 0; x < header->width; x++)
+		for (u32 x = 0; x < header->width - 7; x++)
 		{
 			u8 *pixel = data + (y * header->width + x) * (bits);
 			if (*(u32 *)pixel == *(u32 *)color)
 			{
-				// check l pattern
-				int error = 0;
+				error = 0;
 				for (int j = 1; j < 7; j++)
 				{
-					u8 *pixel = data + ((y + 7) * header->width + x + j) * (bits);
-					if (*(u32 *)pixel != *(u32 *)color)
+					u8 *pixel_h = data + ((y + 7) * header->width + x + j) * (bits);
+					u8 *pixel_v = data + ((y + j) * header->width + x) * (bits);
+					if (*(u32 *)pixel_h != *(u32 *)color || *(u32 *)pixel_v != *(u32 *)color)
 					{
 						error = 1;
 						break;
 					}
 				}
-				for (int j = 1; j < 8; j++)
+				if (!error)
 				{
-					u8 *pixel = data + ((y + j) * header->width + x) * (bits);
-					if (*(u32 *)pixel != *(u32 *)color)
-					{
-						error = 1;
-						break;
-					}
+					start = data + (y * header->width + x) * (bits);
+					break;
 				}
-				if (error)
-					continue;
-				start = data + (y * header->width + x) * (bits);
 			}
 		}
 		if (start != NULL)
 			break;
 	}
 	if (start == NULL)
-		return 1;
+		return (PRINT_ERROR("Failed to find header\n"), 1);
 	// printf("Found header at %p\n", start);
 	// printf("Header: %02x %02x %02x\n", start[0], start[1], start[2]);
 
