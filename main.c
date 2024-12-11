@@ -137,5 +137,6 @@ int main(int argc, char **argv)
 	// write(output_fd, file_content.data, header->data_offset);
 	// write(output_fd, data, header->width * header->height * (bits));
 	write(STDOUT_FILENO, message, len);
+	write(STDOUT_FILENO, "\n", 1);
 	return 0;
 }
