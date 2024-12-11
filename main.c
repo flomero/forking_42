@@ -106,7 +106,6 @@ int main(int argc, char **argv)
 						break;
 					}
 				}
-				// check if the last pixel is not the same color
 				u8 *pixel_h = data + ((y + 7) * header->width + x + 7) * bits;
 				__m128i pixel_h_data = _mm_loadu_si128((__m128i *)pixel_h);
 				if (_mm_movemask_epi8(_mm_cmpeq_epi32(pixel_h_data, color_vector)) != 0)
@@ -122,7 +121,7 @@ int main(int argc, char **argv)
 			break;
 	}
 	if (start == NULL)
-		return (PRINT_ERROR("Failed to find header\n"), 1);
+		return (printf("Failed to find header\n"), 1);
 	// printf("Found header at %p\n", start);
 	// printf("Header: %02x %02x %02x\n", start[0], start[1], start[2]);
 
