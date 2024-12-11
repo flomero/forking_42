@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 				}
 				if (!error)
 				{
-					start = data + (y * header->width + x) * (bits);
+					start = pixel;
 					break;
 				}
 			}
